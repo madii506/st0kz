@@ -45,7 +45,7 @@
   Z.signSendV = async (swapTx, st) => { const W = await web3(); st('check your wallet…'); const tx = W.VersionedTransaction.deserialize(unb64(swapTx)), s = await WL.p.signTransaction(tx); st('sending…'); const r = await post('send', { txs: [b64(s.serialize())] }); setTimeout(refreshWallet, 1500); return r.sigs[0]; };
   // ---------------------------------------------------------------- the shell
   const NAV = [['feed', 'FEED'], ['board', 'BOARD'], ['launch', 'LAUNCH'], ['me', 'PORTFOLIO'], ['man', 'MANUAL'], ['ops', 'OPS']];
-  function shell() { $('#os').innerHTML = `<header class="tb"><a class="brand" href="#/feed"><img src="/mark.png" alt=""><b>st0kz</b></a>
+  function shell() { $('#os').innerHTML = `<header class="tb"><a class="brand" href="#/" title="home"><img src="/mark.png" alt=""><b>st0kz</b></a>
       <div class="cmd"><span class="pr">&gt;</span><input id="cmd" placeholder="type a stock, a coin or a command" autocomplete="off" spellcheck="false" aria-label="command line"><kbd>/</kbd><div class="sug" id="sug"></div></div>
       <div class="tb-r"><span class="clock" id="clock"></span><span class="solp" id="solp"></span><span id="acct"></span></div></header>
     <div class="tape" id="tape"><div class="tape-in"></div></div>
@@ -75,7 +75,7 @@
   Z.winScroll = fn => { Z._ws = fn; }; addEventListener('scroll', () => { if (Z._ws) Z._ws(); }, { passive: true });
   // ---------------------------------------------------------------- command line
   function cmdInit() { const inp = $('#cmd'), sug = $('#sug'); let items = [], at = 0;
-    const CMDS = [['feed', 'the launch feed', '#/feed'], ['board', 'the top stocks', '#/board'], ['launch', 'launch a coin', '#/launch'], ['me', 'your portfolio', '#/me'], ['manual', 'how st0kz works', '#/man'], ['ops', 'operator console', '#/ops'], ['intro', 'walk the floor again', '/?intro=1']];
+    const CMDS = [['feed', 'the launch feed', '#/feed'], ['board', 'the top stocks', '#/board'], ['launch', 'launch a coin', '#/launch'], ['me', 'your portfolio', '#/me'], ['manual', 'how st0kz works', '#/man'], ['ops', 'operator console', '#/ops'], ['home', 'the home window', '#/']];
     const build = q => { q = q.trim().toLowerCase(); if (!q) return []; const out = []; for (const c of CMDS) if (c[0].startsWith(q)) out.push({ k: c[0], d: c[1], h: c[2], t: 'cmd' });
       for (const s of (S.board ? S.board.stocks : [])) if ((s.sym + ' ' + s.name).toLowerCase().includes(q)) out.push({ k: s.sym, d: s.name, h: '#/s/' + s.sym, t: '#' + s.rank, ic: s.icon });
       for (const c of (S.coins ? S.coins.coins : [])) if ((c.symbol + ' ' + c.name + ' ' + c.mint).toLowerCase().includes(q)) out.push({ k: c.symbol, d: c.name, h: '#/c/' + c.mint, t: 'coin · ' + c.stock, ic: c.image });
