@@ -45,8 +45,17 @@ async function putFile(path, data, type, over) { if (!hasStore()) throw new Erro
 async function readFile(path, fresh) { const b = blobBase(); if (!b) return null; try { const r = await fetch(b + PFX + path + (fresh ? '?t=' + Date.now() : ''), { signal: AbortSignal.timeout(6000) }); return r.ok ? await r.json() : null; } catch { return null; } }
 
 // ---------------------------------------------------------------- prices
-const STOCKS = CFG.stocks, BY_SYM = Object.fromEntries(STOCKS.map(s => [s.sym, s])), BY_MINT = Object.fromEntries(STOCKS.map(s => [s.mint, s]));
-const logoOf = s => `https://xstocks-metadata.backed.fi/logos/tokens/${s.tok}.png`;
+let STOCKS = CFG.stocks.slice(); const BY_SYM = Object.fromEntries(STOCKS.map(s => [s.sym, s])), BY_MINT = Object.fromEntries(STOCKS.map(s => [s.mint, s]));
+const logoOf = s => s.icon || `https://xstocks-metadata.backed.fi/logos/tokens/${s.tok}.png`;
+const FUNDS = new Set(['SPY', 'QQQ', 'GLD', 'SLV', 'USO', 'TQQQ', 'SQQQ', 'VTI', 'VOO', 'IWM', 'DIA', 'COPX', 'IJR', 'SMH', 'SOXL', 'XOP', 'QYLD', 'EWY', 'TLT', 'IAU', 'GDX', 'URA', 'EEM', 'ARKK', 'IBIT', 'SCHD', 'JEPI', 'XLK', 'XLF', 'XLE']);
+// every tokenized stock Jupiter lists as verified (xStocks and Ondo), one per company: the most liquid one wins
+const universe = () => memo('uni', 15 * 60e3, async () => { const L = await getJ('https://lite-api.jup.ag/tokens/v2/tag?query=verified', 15000), best = {};
+  for (const t of Array.isArray(L) ? L : []) { const m = /^(.*?)\s*\(?\s*(xStock|Ondo Tokenized)\s*\)?$/i.exec(String(t.name || '').trim()); if (!m || !t.id) continue; const sym = String(t.symbol || '').replace(/(x|on|ON)$/, '').toUpperCase(); if (!/^[A-Z0-9.]{1,8}$/.test(sym)) continue;
+    const e = { sym, name: m[1].trim(), mint: t.id, tok: t.symbol, kind: FUNDS.has(sym) ? 'fund' : 'stock', icon: t.icon || null, issuer: /ondo/i.test(m[2]) ? 'Ondo' : 'xStocks', liq: t.liquidity || 0 };
+    if (!BY_MINT[t.id]) BY_MINT[t.id] = e; else { BY_MINT[t.id].icon = BY_MINT[t.id].icon || e.icon; BY_MINT[t.id].liq = e.liq; } if (!best[sym] || e.liq > best[sym].liq) best[sym] = e; }
+  if (!Object.keys(best).length) throw new Error('no tokenized stocks listed');
+  for (const sym in best) { const e = best[sym], cfg = CFG.stocks.find(c => c.sym === sym); BY_SYM[sym] = Object.assign({}, e, cfg && { name: cfg.name, kind: cfg.kind }); }
+  STOCKS = Object.values(BY_SYM); return STOCKS; });
 async function jupInfo(mints) { const o = {}, L = [...new Set(mints)].filter(Boolean);
   for (let i = 0; i < L.length; i += 90) { try { const j = await getJ(`${JUP}/tokens/v2/search?query=${L.slice(i, i + 90).join(',')}`);
     for (const t of j || []) { const s = t.stats24h || {}; o[t.id] = { symbol: t.symbol, name: t.name, icon: t.icon || null, decimals: t.decimals, usd: t.usdPrice ?? null, ch24: s.priceChange ?? null, mcap: t.mcap ?? t.fdv ?? null, liquidity: t.liquidity ?? null, holders: t.holderCount ?? null, vol24: (s.buyVolume || 0) + (s.sellVolume || 0), traders24: s.numTraders ?? null, curve: t.bondingCurve ?? null, created: t.createdAt || null, program: t.tokenProgram || null }; } } catch { } }
@@ -57,7 +66,7 @@ const solUsd = () => memo('sol', 30000, async () => ((await jupInfo([SOL]))[SOL]
 // 30-day performance comes from daily candles (GeckoTerminal). The sheet is refreshed a few stocks per request and kept in a small file, so a cold start has it at once.
 let PERF = null, perfSavedAt = 0;
 async function perfSheet() { if (!PERF) PERF = (await readFile('perf.json', true)) || {}; return PERF; }
-async function refreshPerf(liquid) { const P = await perfSheet(), now = Date.now(), stale = liquid.filter(s => !P[s.mint] || now - P[s.mint].at > 8 * 3600e3).slice(0, 5); if (!stale.length) return;
+async function refreshPerf(liquid) { const P = await perfSheet(), now = Date.now(), stale = liquid.filter(s => !P[s.mint] || now - P[s.mint].at > 8 * 3600e3).slice(0, 8); if (!stale.length) return;
   let pairs = {}; try { const d = await getJ(`https://api.dexscreener.com/tokens/v1/solana/${stale.map(s => s.mint).join(',')}`, 6000); for (const p of Array.isArray(d) ? d : []) { const m = p.baseToken && p.baseToken.address; if (!BY_MINT[m]) continue; const liq = (p.liquidity || {}).usd || 0; if (!pairs[m] || liq > pairs[m].liq) pairs[m] = { addr: p.pairAddress, liq }; } } catch { }
   await Promise.all(stale.map(async s => { const pr = pairs[s.mint]; if (!pr) { P[s.mint] = { at: now, perf30: null, closes: [] }; return; }
     try { const g = await getJ(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${pr.addr}/ohlcv/day?aggregate=1&limit=31&currency=usd&token=${s.mint}`, 7000);
@@ -65,16 +74,16 @@ async function refreshPerf(liquid) { const P = await perfSheet(), now = Date.now
       if (rows.length < 8) { P[s.mint] = { at: now, perf30: null, closes: rows.map(r => r.c) }; return; }
       P[s.mint] = { at: now, perf30: (rows[rows.length - 1].c / rows[0].c - 1) * 100, days: rows.length - 1, closes: rows.map(r => +r.c.toPrecision(6)) }; } catch { /* rate limited: try again on a later request */ } }));
   if (hasStore() && now - perfSavedAt > 60000) { perfSavedAt = now; putFile('perf.json', JSON.stringify(P), 'application/json', true).catch(() => { }); } }
-async function board() { return memo('board', 45000, async () => { const J = await jupInfo([SOL, ...STOCKS.map(s => s.mint)]);
-  const all = STOCKS.map(s => { const j = J[s.mint] || {}; return { sym: s.sym, name: s.name, mint: s.mint, tok: s.tok, kind: s.kind, icon: logoOf(s), usd: j.usd ?? null, ch24: j.ch24 ?? null, liquidity: j.liquidity ?? null, mcap: j.mcap ?? null, holders: j.holders ?? null, vol24: j.vol24 ?? null, decimals: j.decimals ?? 8 }; });
+async function board() { return memo('board', 45000, async () => { await universe().catch(() => null); const cand = STOCKS.filter(s => s.liq == null || s.liq >= THIN / 3).sort((a, b) => (b.liq || 0) - (a.liq || 0)).slice(0, 160), J = await jupInfo([SOL, ...cand.map(s => s.mint)]);
+  const all = cand.map(s => { const j = J[s.mint] || {}; return { sym: s.sym, name: s.name, mint: s.mint, tok: s.tok, kind: s.kind, icon: logoOf(s), usd: j.usd ?? null, ch24: j.ch24 ?? null, liquidity: j.liquidity ?? null, mcap: j.mcap ?? null, holders: j.holders ?? null, vol24: j.vol24 ?? null, decimals: j.decimals ?? 8 }; });
   const liquid = all.filter(s => s.usd && (s.liquidity || 0) >= THIN); await refreshPerf(liquid).catch(() => { }); const P = await perfSheet();
   for (const s of liquid) { const p = P[s.mint]; s.perf30 = p && p.perf30 != null ? p.perf30 : null; s.days = p && p.days || null; s.closes = (p && p.closes) || []; }
   const have30 = liquid.filter(s => s.perf30 != null).length, basis = have30 >= Math.min(8, liquid.length) ? '30d' : '24h', score = s => basis === '30d' ? (s.perf30 ?? -1e9) : (s.ch24 ?? -1e9);
   const ranked = [...liquid].sort((a, b) => score(b) - score(a)).slice(0, BOARD).map((s, i) => ({ ...s, rank: i + 1 }));
-  return { at: Date.now(), basis, size: BOARD, sol: (J[SOL] || {}).usd || null, stocks: ranked, waiting: all.filter(s => !ranked.find(r => r.mint === s.mint)).map(s => ({ sym: s.sym, name: s.name, icon: s.icon, why: s.usd && (s.liquidity || 0) >= THIN ? 'outside the top ' + BOARD : 'too thin to price' })) }; }); }
+  return { at: Date.now(), basis, size: BOARD, sol: (J[SOL] || {}).usd || null, stocks: ranked, waiting: all.filter(s => !ranked.find(r => r.mint === s.mint)).slice(0, 40).map(s => ({ sym: s.sym, name: s.name, icon: s.icon, why: s.usd && (s.liquidity || 0) >= THIN ? 'outside the top ' + BOARD : 'too thin to price' })) }; }); }
 
 // ---------------------------------------------------------------- the chain index: launches and payout rounds, read from the tag address
-async function scan() { return memo('scan', 20000, async () => { const sigs = (await conn.getSignaturesForAddress(TAG, { limit: 300 })).filter(s => !s.err), launches = [], rounds = [];
+async function scan() { return memo('scan', 20000, async () => { await universe().catch(() => null); const sigs = (await conn.getSignaturesForAddress(TAG, { limit: 300 })).filter(s => !s.err), launches = [], rounds = [];
   for (let i = 0; i < sigs.length; i += 25) { const txs = await conn.getParsedTransactions(sigs.slice(i, i + 25).map(s => s.signature), { maxSupportedTransactionVersion: 0 }).catch(() => []);
     txs.forEach((t, k) => { if (!t || !t.meta || t.meta.err) return; const by = t.transaction.message.accountKeys[0].pubkey.toBase58(), sig = sigs[i + k].signature, at = t.blockTime;
       for (const ix of t.transaction.message.instructions) { if (ix.program !== 'spl-memo' || typeof ix.parsed !== 'string') continue;
@@ -96,7 +105,7 @@ async function coin(mint) { const C = await coins(), c = C.coins.find(x => x.min
   return { coin: c, stock: st || { sym: c.stock, name: (BY_SYM[c.stock] || {}).name, icon: c.stockIcon, off: true }, stockMint: (BY_SYM[c.stock] || {}).mint, rounds: S.rounds.filter(r => r.coin === mint).slice(0, 30), feePct: CFG.feePct, payoutsLive: !!PIN.pad && c.onPad, sol: B.sol }; }
 
 // ---------------------------------------------------------------- wallets and holders
-async function walletView(addr) { const w = pk(addr, 'bad wallet'); const [lam, a, b] = await Promise.all([conn.getBalance(w), conn.getParsedTokenAccountsByOwner(w, { programId: SPL.TOKEN_PROGRAM_ID }), conn.getParsedTokenAccountsByOwner(w, { programId: SPL.TOKEN_2022_PROGRAM_ID })]);
+async function walletView(addr) { const w = pk(addr, 'bad wallet'); await universe().catch(() => null); const [lam, a, b] = await Promise.all([conn.getBalance(w), conn.getParsedTokenAccountsByOwner(w, { programId: SPL.TOKEN_PROGRAM_ID }), conn.getParsedTokenAccountsByOwner(w, { programId: SPL.TOKEN_2022_PROGRAM_ID })]);
   const held = {}; for (const x of [...a.value, ...b.value]) { const i = x.account.data.parsed.info, ui = +i.tokenAmount.uiAmountString; if (ui > 0) held[i.mint] = (held[i.mint] || 0) + ui; }
   const mints = Object.keys(held).slice(0, 180), [J, C, su] = await Promise.all([jupInfo(mints), coins().catch(() => ({ coins: [] })), solUsd()]); const mine = Object.fromEntries(C.coins.map(c => [c.mint, c]));
   const tokens = mints.map(m => { const j = J[m] || {}, st = BY_MINT[m], c = mine[m]; return { mint: m, amount: held[m], symbol: st ? st.sym : (j.symbol || m.slice(0, 4)), name: st ? st.name : (j.name || ''), icon: st ? logoOf(st) : (c ? c.image : j.icon || null), price: j.usd ?? null, usd: j.usd != null ? held[m] * j.usd : null, kind: st ? 'stock' : c ? 'st0kz' : 'coin', stock: c ? c.stock : null }; }).sort((x, y) => (y.usd || 0) - (x.usd || 0));
