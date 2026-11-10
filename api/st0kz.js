@@ -50,11 +50,12 @@ const logoOf = s => s.icon || `https://xstocks-metadata.backed.fi/logos/tokens/$
 const FUNDS = new Set(['SPY', 'QQQ', 'GLD', 'SLV', 'USO', 'TQQQ', 'SQQQ', 'VTI', 'VOO', 'IWM', 'DIA', 'COPX', 'IJR', 'SMH', 'SOXL', 'XOP', 'QYLD', 'EWY', 'TLT', 'IAU', 'GDX', 'URA', 'EEM', 'ARKK', 'IBIT', 'SCHD', 'JEPI', 'XLK', 'XLF', 'XLE']);
 // every tokenized stock Jupiter lists as verified (xStocks and Ondo), one per company: the most liquid one wins
 const universe = () => memo('uni', 15 * 60e3, async () => { const L = await getJ('https://lite-api.jup.ag/tokens/v2/tag?query=verified', 15000), best = {};
-  for (const t of Array.isArray(L) ? L : []) { const m = /^(.*?)\s*\(?\s*(xStock|Ondo Tokenized)\s*\)?$/i.exec(String(t.name || '').trim()); if (!m || !t.id) continue; const sym = String(t.symbol || '').replace(/(x|on|ON)$/, '').toUpperCase(); if (!/^[A-Z0-9.]{1,8}$/.test(sym)) continue;
+  for (const t of Array.isArray(L) ? L : []) { const m = /^(.*?)\s*\(?\s*(xStock|Ondo Tokenized)\s*\)?$/i.exec(String(t.name || '').trim()); if (!m || !t.id) continue; const cm = CFG.stocks.find(c => c.mint === t.id), sym = cm ? cm.sym : String(t.symbol || '').replace(/(x|on|ON)$/, '').toUpperCase(); if (!/^[A-Z0-9.]{1,8}$/.test(sym)) continue;
     const e = { sym, name: m[1].trim(), mint: t.id, tok: t.symbol, kind: FUNDS.has(sym) ? 'fund' : 'stock', icon: t.icon || null, issuer: /ondo/i.test(m[2]) ? 'Ondo' : 'xStocks', liq: t.liquidity || 0 };
     if (!BY_MINT[t.id]) BY_MINT[t.id] = e; else { BY_MINT[t.id].icon = BY_MINT[t.id].icon || e.icon; BY_MINT[t.id].liq = e.liq; } if (!best[sym] || e.liq > best[sym].liq) best[sym] = e; }
   if (!Object.keys(best).length) throw new Error('no tokenized stocks listed');
-  for (const sym in best) { const e = best[sym], cfg = CFG.stocks.find(c => c.sym === sym); BY_SYM[sym] = Object.assign({}, e, cfg && { name: cfg.name, kind: cfg.kind }); }
+  const seen = new Set(); for (const sym in best) { const e = best[sym], cfg = CFG.stocks.find(c => c.sym === sym); if (seen.has(e.mint)) { delete BY_SYM[sym]; continue; } seen.add(e.mint); BY_SYM[sym] = Object.assign({}, e, cfg && { name: cfg.name, kind: cfg.kind }); }
+  for (const sym in BY_SYM) if (!best[sym] && seen.has(BY_SYM[sym].mint)) delete BY_SYM[sym];
   STOCKS = Object.values(BY_SYM); return STOCKS; });
 async function jupInfo(mints) { const o = {}, L = [...new Set(mints)].filter(Boolean);
   for (let i = 0; i < L.length; i += 90) { try { const j = await getJ(`${JUP}/tokens/v2/search?query=${L.slice(i, i + 90).join(',')}`);
