@@ -140,7 +140,7 @@ details.qa{border:1px solid var(--ln);border-radius:10px;padding:0 14px;margin-t
 
 .opg{display:grid;grid-template-columns:minmax(0,1.4fr) 130px auto;gap:8px}.rk>span{min-width:0}
 #intro.out{opacity:0;transition:opacity .6s var(--ease);pointer-events:none}
-#intro::before{content:"";position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px;border-radius:50%;border:2px solid rgba(120,220,170,.18);border-top-color:#d9f99d;animation:isp .8s linear infinite}#intro.rdy::before{display:none}@keyframes isp{to{transform:rotate(360deg)}}
+
 #ic{opacity:0}.iprog{position:absolute;left:0;bottom:0;height:2px;width:100%;background:linear-gradient(90deg,#34d399,#d9f99d);transform-origin:0 50%;transform:scaleX(0);opacity:.7}
 /* smaller screens */
 @media (max-width:1180px){.ws{grid-template-columns:230px minmax(0,1fr) 320px}.ws[data-l=wide]{grid-template-columns:230px minmax(0,1fr)}.ws[data-l=board]{grid-template-columns:minmax(0,1fr) 320px}.rk{grid-template-columns:20px 26px minmax(0,1fr) 50px}.rk svg{display:none}.clock{display:none}}

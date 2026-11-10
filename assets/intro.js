@@ -10,7 +10,7 @@
 
   H.classList.add('intro-on');
   const el = $('#intro'), canvas = $('#ic'), prog = $('#iprog'), flash = $('#iflash'), sb = $('#isnd');
-  let done = false, stage = null, sfx = null, muted = false, t = 0, last = 0, raf = 0, frozen = false, T = 15.5, push = 0, slow = 0, frames = 0, scale = 1, hid = false;
+  let done = false, stage = null, sfx = null, muted = false, t = 0, last = 0, raf = 0, frozen = false, T = 15.7, push = 0, slow = 0, frames = 0, scale = 1, hid = false;
   const label = () => { if (!sb) return; sb.textContent = sfx && sfx.running() && !muted ? 'mute' : 'sound on'; };
   // browsers only start sound after a tap or a key, so the first one anywhere turns it on
   const wake = e => { if (!sfx || muted || (e && e.target === sb)) return; sfx.resume().then(label); };
@@ -29,7 +29,7 @@
 
   // on a slow connection, don't keep anyone waiting at the door
   setTimeout(() => { if (!el.classList.contains('rdy')) finish(); }, 9000);
-  Promise.all([import('/assets/floor.js?v=2'), q.has('t') ? null : import('/assets/sfx.js?v=1').catch(() => null)]).then(([m, s]) => { if (done) return; const low = innerWidth < 700 || (navigator.hardwareConcurrency || 8) <= 4 || q.get('low') === '1'; T = m.DURATION;
+  Promise.all([import('/assets/floor.js?v=3'), q.has('t') ? null : import('/assets/sfx.js?v=2').catch(() => null)]).then(([m, s]) => { if (done) return; const low = innerWidth < 700 || (navigator.hardwareConcurrency || 8) <= 4 || q.get('low') === '1'; T = m.DURATION;
     stage = m.create(canvas, { low, exact: q.has('t') }); if (s) { try { sfx = s.createSound(m.CUES); } catch (e) { sfx = null; } } return stage.ready.then(() => m); }).then(m => { if (done || !m) return; el.classList.add('rdy');
     if (sfx) { sfx.start(); if (sb) sb.classList.add('on'); label(); sfx.ctx.onstatechange = label; }
     window.__intro = { T, sfx, at: x => { frozen = true; t = x; paint(); }, play: () => { frozen = false; last = performance.now(); } };

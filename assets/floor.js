@@ -11,16 +11,16 @@ const fb = x => vn(x) * .6 + vn(x * 2.13 + 7.1) * .28 + vn(x * 4.7 + 19.3) * .12
 const cv = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 const GREEN = '#4ade80', LIME = '#d9f99d', MINT = '#34d399', RED = '#fb7185', AMBER = '#fbbf24', DIM = '#1b4d38', INK = '#020a07';
 
-export const DURATION = 15.5;
+export const DURATION = 15.7;
 // the walk: from the lobby to the booth
-const Z0 = 13.4, Z1 = -4.3, T0 = .45, T1 = 9.6, RAMP = .9, DIST = Z0 - Z1, VEL = DIST / (T1 - T0 - RAMP);
+const Z0 = 12.2, Z1 = -4.25, T0 = .45, T1 = 9.1, RAMP = .9, DIST = Z0 - Z1, VEL = DIST / (T1 - T0 - RAMP);
 const walked = t => { const a = cl(t - T0, 0, T1 - T0), L = T1 - T0; if (a <= RAMP) return VEL * a * a / (2 * RAMP); if (a >= L - RAMP) { const b = L - a; return DIST - VEL * b * b / (2 * RAMP); } return VEL * (a - RAMP / 2); };
 const pace = t => cl(Math.min((t - T0) / RAMP, (T1 - t) / RAMP));
 const WAKE = 9.45; // the laptop wakes
-export const LOGIN = { mark: .25, scan: 1.1, code: 2.3, unlock: 2.95, grid: 3.3, build: 4.45 }; // seconds after it wakes
+export const LOGIN = { boot: .25, desk: 1.05, scan: 1.4, code: 2.38, unlock: 2.98, cursor: 3.2, click: 3.78, open: 3.98, grid: 4.2, build: 4.82, max: 5.0 }; // seconds after it wakes
 // when things happen, for the sound
-export const CUES = (() => { const steps = []; let next = .43, gate = null; for (let t = T0; t <= T1 + .01; t += 1 / 240) { const d = walked(t); if (d >= next) { steps.push(+t.toFixed(3)); next += .86; } if (gate == null && d >= 4.8) gate = +t.toFixed(3); }
-  const bell = []; for (let t = 2.392; t < 7.4; t += .3831) bell.push([+t.toFixed(3), ss(2.2, 2.7, t) * (1 - ss(6.4, 7.6, t))]); return { steps, gate, bell, lid: [9.02, 9.46], wake: WAKE, login: LOGIN, dive: [13.6, 15.2], end: DURATION }; })();
+export const CUES = (() => { const steps = []; let next = .43, gate = null; for (let t = T0; t <= T1 + .01; t += 1 / 240) { const d = walked(t); if (d >= next) { steps.push(+t.toFixed(3)); next += .86; } if (gate == null && d >= Z0 - 8.6) gate = +t.toFixed(3); }
+  const bell = []; for (let t = 2.392; t < 7.4; t += .3831) bell.push([+t.toFixed(3), ss(2.2, 2.7, t) * (1 - ss(6.4, 7.6, t))]); return { steps, gate, bell, lid: [9.02, 9.46], wake: WAKE, login: LOGIN, dive: [14.4, 15.35], end: DURATION }; })();
 
 export function create(canvas, opt = {}) {
   const low = !!opt.low, R = new T.WebGLRenderer({ canvas, antialias: !low, alpha: false, powerPreference: 'high-performance' });
@@ -82,8 +82,8 @@ export function create(canvas, opt = {}) {
     g.beginPath(); for (let k = 0; k <= Math.min(n, show); k++) g[k ? 'lineTo' : 'moveTo'](40 + (k + .5) * w, Y(.07 + .62 * (k / n))); g.strokeStyle = LIME; g.lineWidth = 3; g.stroke();
     const hx = 40 + (Math.min(n, show) + .2) * w; g.fillStyle = `rgba(217,249,157,${.5 + .5 * Math.sin(t * 6)})`; g.beginPath(); g.arc(hx, Y(val(Math.min(n, show))), 8, 0, TAU); g.fill(); g.fillStyle = GREEN; g.beginPath(); g.moveTo(34, 78); g.lineTo(64, 28); g.lineTo(94, 78); g.fill(); g.fillStyle = 'rgba(217,249,157,.85)'; g.fillRect(110, 40, 150, 14); g.fillStyle = 'rgba(52,211,153,.6)'; g.fillRect(110, 62, 96, 10); for (let i = 0; i < 8; i++) { g.fillStyle = 'rgba(217,249,157,.5)'; g.fillRect(W - 34, 30 + i * H / 8, 22, 6); } wallTex.needsUpdate = true; };
 
-  // the laptop. Asleep, it wakes, draws the st0kz mark, reads his fingerprint, takes a six-digit code,
-  // unlocks into the 64 seats of the board, then builds the terminal you land in. No words anywhere.
+  // the laptop's screen: a retro machine. It boots, shows a desktop, asks for his fingerprint and a six-digit code,
+  // then the cursor opens st0kz: the 64 seats of the board fill the window, it goes full screen and becomes the terminal. No words.
   const LK = low ? 1 : 2, LW = 640 * LK, LH = 400 * LK, lap = cv(LW, LH), lg = lap.getContext('2d'), lapTex = tex(lap); lapTex.generateMipmaps = false; lapTex.minFilter = T.LinearFilter;
   const L = LOGIN, rr = (g, x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
   const PRINT = (() => { const r = rng(808), out = []; for (let i = 0; i < 10; i++) { const rad = 6 + i * 4.6, a0 = PI * (.78 + i * .012), a1 = PI * (2.22 - i * .012), segs = []; let s = a0; const cuts = 1 + Math.floor(r() * 2); for (let k = 0; k < cuts; k++) { const c = lerp(s + .3, a1 - .3, r()); segs.push([s, c - .08]); s = c + .1; } segs.push([s, a1]); out.push([rad, segs]); } return out; })();
@@ -94,58 +94,95 @@ export function create(canvas, opt = {}) {
     seg(() => { [[-30, 0], [-17, -8], [-6, -3], [7, -19], [18, -13], [30, -27]].forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); }, .55, 1); g.setLineDash([]);
     const d = ss(.9, 1, k); if (d > 0) { g.fillStyle = LIME; g.beginPath(); g.arc(30, -27, 5.5 * d, 0, TAU); g.fill(); } g.restore(); };
   const pane = (g, x, y, w, h, k) => { g.globalAlpha = k; g.fillStyle = 'rgba(7,26,18,.94)'; g.strokeStyle = 'rgba(120,220,170,.28)'; g.lineWidth = 1.2; rr(g, x, y + (1 - k) * 14, w, h, 8); g.fill(); g.stroke(); };
+  // the retro desktop's parts: bevelled faces, windows with title bars, pixel icons, an arrow cursor
+  const FACE = '#b7d1c0', HI = '#f1faf4', SH = '#4c7260', DK = '#13231b';
+  const bevel = (g, x, y, w, h, up = true) => { g.fillStyle = up ? HI : DK; g.fillRect(x, y, w, 1.4); g.fillRect(x, y, 1.4, h); g.fillStyle = up ? DK : HI; g.fillRect(x, y + h - 1.4, w, 1.4); g.fillRect(x + w - 1.4, y, 1.4, h); g.fillStyle = up ? '#d9eadf' : SH; g.fillRect(x + 1.4, y + 1.4, w - 2.8, 1); g.fillRect(x + 1.4, y + 1.4, 1, h - 2.8); g.fillStyle = up ? SH : '#d9eadf'; g.fillRect(x + 1.4, y + h - 2.4, w - 2.8, 1); g.fillRect(x + w - 2.4, y + 1.4, 1, h - 2.8); };
+  const mini = (g, x, y, s) => { g.save(); g.translate(x, y); g.scale(s / 16, s / 16); g.fillStyle = '#0c2c20'; g.fillRect(1, 1, 14, 10); g.fillStyle = MINT; g.fillRect(0, 0, 16, 1.6); g.fillRect(0, 0, 1.6, 11); g.fillRect(14.4, 0, 1.6, 11); g.fillRect(0, 9.6, 16, 1.6); g.fillRect(-1.5, 12, 19, 2.4); g.strokeStyle = LIME; g.lineWidth = 1.6; g.beginPath(); g.moveTo(3, 8); g.lineTo(6, 6); g.lineTo(8, 7); g.lineTo(12.5, 3); g.stroke(); g.restore(); };
+  const winFrame = (g, x, y, w, h, act = true, body = FACE) => { g.fillStyle = body; g.fillRect(x, y, w, h); bevel(g, x, y, w, h, true); const tg = g.createLinearGradient(x, 0, x + w, 0); tg.addColorStop(0, act ? '#0e5a3d' : '#6b8577'); tg.addColorStop(1, act ? '#38d69b' : '#a9bdb1'); g.fillStyle = tg; g.fillRect(x + 3, y + 3, w - 6, 15);
+    mini(g, x + 6, y + 5.5, 10); g.fillStyle = 'rgba(241,250,244,.92)'; g.fillRect(x + 21, y + 8.5, 44, 4);
+    for (let i = 0; i < 3; i++) { const bx = x + w - 4 - 13 * (3 - i), by = y + 5; g.fillStyle = FACE; g.fillRect(bx, by, 11, 10); bevel(g, bx, by, 11, 10, true); g.fillStyle = DK; if (i === 0) g.fillRect(bx + 3, by + 6.5, 5, 1.6); else if (i === 1) { g.fillRect(bx + 3, by + 2.5, 5, 1.6); g.fillRect(bx + 3, by + 2.5, 1.2, 5); g.fillRect(bx + 6.8, by + 2.5, 1.2, 5); g.fillRect(bx + 3, by + 6.5, 5, 1.2); } else { g.save(); g.strokeStyle = DK; g.lineWidth = 1.5; g.beginPath(); g.moveTo(bx + 3, by + 2.5); g.lineTo(bx + 8, by + 7.5); g.moveTo(bx + 8, by + 2.5); g.lineTo(bx + 3, by + 7.5); g.stroke(); g.restore(); } } };
+  const ICONS = [
+    g => { g.fillStyle = '#0c2c20'; g.fillRect(4, 4, 24, 16); mini(g, 4, 4, 24); },
+    g => { g.fillStyle = '#d9c46a'; g.fillRect(3, 9, 26, 17); g.fillRect(3, 6, 11, 5); g.fillStyle = '#f2e39a'; g.fillRect(3, 12, 26, 14); g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(3, 25, 26, 1.5); },
+    g => { g.fillStyle = '#f1faf4'; g.fillRect(6, 3, 20, 26); g.fillStyle = '#9fbfac'; g.fillRect(6, 3, 20, 3); g.strokeStyle = '#16a36a'; g.lineWidth = 2; g.beginPath(); g.moveTo(9, 23); g.lineTo(13, 17); g.lineTo(17, 20); g.lineTo(23, 10); g.stroke(); },
+    g => { for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#e6c35c' : '#f4d977'; g.beginPath(); g.ellipse(16, 25 - i * 5, 11, 4, 0, 0, TAU); g.fill(); g.strokeStyle = '#9c7d27'; g.lineWidth = 1; g.stroke(); } },
+    g => { g.fillStyle = '#5fb3e0'; g.beginPath(); g.arc(16, 16, 12, 0, TAU); g.fill(); g.fillStyle = '#7fd38f'; g.beginPath(); g.ellipse(12, 13, 5, 6, .4, 0, TAU); g.fill(); g.beginPath(); g.ellipse(21, 21, 4, 3, .2, 0, TAU); g.fill(); g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 1; g.beginPath(); g.ellipse(16, 16, 5, 12, 0, 0, TAU); g.stroke(); },
+    g => { g.fillStyle = '#c9d6ce'; g.fillRect(8, 9, 16, 19); g.fillStyle = '#9fb1a6'; g.fillRect(6, 6, 20, 3); g.fillRect(13, 4, 6, 2); g.fillStyle = '#7f948a'; for (let i = 0; i < 3; i++) g.fillRect(11 + i * 4, 12, 1.6, 13); }];
+  const ICON_AT = i => [20, 18 + i * 52];
+  const cursor = (g, x, y, press) => { g.save(); g.translate(x, y); if (press) g.scale(.92, .92); g.beginPath(); [[0, 0], [0, 16], [4, 12.3], [7, 19], [9.6, 18], [6.6, 11.4], [11.4, 11.4]].forEach(([px, py], i) => i ? g.lineTo(px, py) : g.moveTo(px, py)); g.closePath(); g.fillStyle = '#fff'; g.fill(); g.strokeStyle = '#000'; g.lineWidth = 1.2; g.stroke(); g.restore(); };
+  const curAt = a => { const k1 = eio((a - L.cursor) / .55), sx = 360, sy = 250, ix = ICON_AT(0)[0] + 16, iy = ICON_AT(0)[1] + 14, k2 = eio((a - L.open - .05) / .5); return [lerp(lerp(sx, ix, k1), 470, k2), lerp(lerp(sy, iy, k1), 330, k2)]; };
+  const clickAt = a => (a > L.click && a < L.click + .06) || (a > L.click + .12 && a < L.click + .18);
+  // the app window: where it sits on the desktop, and full screen
+  const WIN0 = [96, 40, 448, 318], WINF = [-3, -18, 646, 421];
+  const winRect = a => { const f = eio((a - L.max) / .42); return WIN0.map((v, i) => lerp(v, WINF[i], f)); };
   const drawLap = t => { const g = lg, a = t - WAKE; g.setTransform(LK, 0, 0, LK, 0, 0); g.globalAlpha = 1; g.setLineDash([]); g.shadowBlur = 0; g.fillStyle = '#010503'; g.fillRect(0, 0, 640, 400);
     if (a < 0) { const gr = g.createLinearGradient(0, 0, 640, 400); gr.addColorStop(0, 'rgba(120,220,170,.05)'); gr.addColorStop(.5, 'rgba(120,220,170,0)'); g.fillStyle = gr; g.fillRect(0, 0, 640, 400); lapTex.needsUpdate = true; return 0; }
-    const on = eo(a / .28); g.save(); g.beginPath(); g.rect(0, 200 - 200 * on, 640, 400 * on); g.clip();
-    const bg = g.createRadialGradient(320, 200, 20, 320, 200, 420); bg.addColorStop(0, '#0b2a1e'); bg.addColorStop(1, '#03100a'); g.fillStyle = bg; g.fillRect(0, 0, 640, 400);
-    const G = g.createLinearGradient(0, 0, 640, 0); G.addColorStop(0, MINT); G.addColorStop(1, LIME);
-    const ui = ss(L.build - .05, L.build + .3, a), login = 1 - ss(L.unlock + .05, L.unlock + .45, a);
-    if (ui < 1) { g.globalAlpha = .55 * (1 - ui); g.strokeStyle = 'rgba(52,211,153,.07)'; g.lineWidth = 1; for (let x = 0; x <= 640; x += 32) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 400); g.stroke(); } for (let y = 0; y <= 400; y += 32) { g.beginPath(); g.moveTo(0, y); g.lineTo(640, y); g.stroke(); } g.globalAlpha = 1; }
-    // the fingerprint: brackets close in, a light reads it down and back up
-    const fpA = ss(L.scan - .15, L.scan + .12, a) * login, fx = 320, fy = 246;
-    if (fpA > 0) { g.globalAlpha = fpA; const bk = eo((a - L.scan + .1) / .3), B = 70 + (1 - bk) * 18; g.strokeStyle = 'rgba(217,249,157,.75)'; g.lineWidth = 2.5; g.lineCap = 'round';
-      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => { g.beginPath(); g.moveTo(fx + sx * B, fy + sy * (B - 18)); g.lineTo(fx + sx * B, fy + sy * B); g.lineTo(fx + sx * (B - 18), fy + sy * B); g.stroke(); });
-      const sp = cl((a - L.scan - .05) / 1.05), sy = fy - 62 + 124 * (sp < .5 ? sp * 2 : 2 - sp * 2), print = () => PRINT.forEach(([r, segs]) => segs.forEach(([s0, s1]) => { g.beginPath(); g.ellipse(fx, fy + 7, r * .92, r * 1.15, 0, s0, s1); g.stroke(); }));
-      g.lineWidth = 3; g.strokeStyle = 'rgba(120,220,170,.22)'; print();
-      if (sp > 0) { g.save(); g.beginPath(); g.rect(fx - 80, fy - 80, 160, sp < .5 ? sy - (fy - 80) : 160); g.clip(); g.strokeStyle = LIME; g.shadowColor = 'rgba(217,249,157,.85)'; g.shadowBlur = 7 + 6 * ss(.5, 1, sp); print(); g.restore(); }
-      if (sp > 0 && sp < 1) { const lgr = g.createLinearGradient(fx - 80, 0, fx + 80, 0); lgr.addColorStop(0, 'rgba(217,249,157,0)'); lgr.addColorStop(.5, 'rgba(217,249,157,.95)'); lgr.addColorStop(1, 'rgba(217,249,157,0)'); g.fillStyle = lgr; g.fillRect(fx - 80, sy - 1.5, 160, 3); g.fillStyle = 'rgba(217,249,157,.07)'; g.fillRect(fx - 80, sp < .5 ? sy - 38 : sy, 160, 38); }
-      g.globalAlpha = 1; }
-    // six digits, typed one by one
-    const cdA = ss(L.code - .3, L.code - .05, a) * login;
-    if (cdA > 0) { g.globalAlpha = cdA; const typed = a < L.code ? 0 : Math.min(6, Math.floor((a - L.code) / .1) + 1), fl = ss(L.unlock - .05, L.unlock + .08, a);
-      for (let i = 0; i < 6; i++) { const x = 320 - 120 + i * 40 + 4, y = 340; g.fillStyle = fl > 0 ? `rgba(217,249,157,${.12 + .55 * fl})` : 'rgba(52,211,153,.08)'; g.strokeStyle = i < typed ? 'rgba(217,249,157,.85)' : 'rgba(120,220,170,.3)'; g.lineWidth = 1.5; rr(g, x, y, 32, 36, 8); g.fill(); g.stroke();
-        if (i < typed) { const k = eo((a - L.code - i * .1) / .12); g.fillStyle = fl > .5 ? '#04130b' : LIME; g.beginPath(); g.arc(x + 16, y + 18, 5.2 * k * (1 + .35 * Math.sin(k * PI)), 0, TAU); g.fill(); } else if (i === typed && Math.sin(a * 17) > 0) { g.fillStyle = LIME; g.fillRect(x + 15, y + 10, 2, 16); } } g.globalAlpha = 1; }
-    // the terminal builds itself around them: top bar, tape, board, feed, side pane, keys
-    if (ui > 0) { const st = i => eo((a - L.build - i * .08) / .42);
-      pane(g, 8, 7, 624, 26, st(0)); g.fillStyle = 'rgba(120,220,170,.12)'; rr(g, 84, 12, 372, 16, 5); g.fill(); g.fillStyle = 'rgba(232,246,236,.85)'; g.fillRect(46, 17, 28, 6); g.fillStyle = 'rgba(120,220,170,.5)'; g.fillRect(468, 17, 34, 5); g.fillRect(508, 17, 32, 5);
-      g.strokeStyle = 'rgba(217,249,157,.6)'; rr(g, 552, 11, 74, 18, 6); g.stroke(); g.fillStyle = GREEN; g.beginPath(); g.arc(561, 20, 3, 0, TAU); g.fill(); g.fillStyle = 'rgba(232,246,236,.8)'; g.fillRect(568, 18, 50, 4);
-      g.globalAlpha = st(1); g.save(); g.beginPath(); g.rect(8, 38, 624, 16); g.clip(); const sh = a * 26, q0 = Math.floor(sh / 96), off = sh - q0 * 96; for (let i = -1; i < 8; i++) { const q = q0 + i, x = 12 + i * 96 - off, up = h1(q * 3.3) > .35; g.fillStyle = `hsl(${(q * 53 % 360 + 360) % 360},60%,55%)`; g.beginPath(); g.arc(x + 6, 46, 5, 0, TAU); g.fill(); g.fillStyle = 'rgba(232,246,236,.8)'; g.fillRect(x + 15, 44, 24, 4); g.fillStyle = up ? GREEN : RED; g.fillRect(x + 44, 44, 20, 4); g.fillStyle = 'rgba(120,220,170,.18)'; g.fillRect(x + 88, 40, 1, 12); } g.restore();
-      pane(g, 8, 60, 124, 309, st(2) * .9); g.globalAlpha = st(2); g.fillStyle = 'rgba(232,246,236,.75)'; g.fillRect(16, 68, 42, 4.5);
-      pane(g, 138, 60, 330, 309, st(3)); g.fillStyle = 'rgba(232,246,236,.92)'; g.fillRect(150, 71, 74, 9); for (let i = 0; i < 4; i++) { g.fillStyle = i ? 'rgba(120,220,170,.14)' : LIME; rr(g, 336 + i * 32, 69, 28, 13, 4); g.fill(); }
-      for (let i = 0; i < 9; i++) { const k = st(5 + i * .55), y = 96 + i * 29.5 + (1 - k) * 8, nw = a > L.build + 1.15 ? ss(L.build + 1.15, L.build + 1.35, a) : 0; g.globalAlpha = k; if (i === 0 && nw > 0) { g.fillStyle = `rgba(217,249,157,${.16 * (1 - ss(L.build + 1.4, L.build + 2.4, a))})`; g.fillRect(140, y - 3, 326, 28); }
-        g.fillStyle = `hsl(${(i * 67 + 140) % 360},60%,56%)`; g.beginPath(); g.arc(158, y + 10, 9, 0, TAU); g.fill(); g.fillStyle = `hsl(${(i * 47 + 150) % 360},62%,56%)`; g.beginPath(); g.arc(165, y + 17, 4, 0, TAU); g.fill();
-        g.fillStyle = 'rgba(232,246,236,.86)'; g.fillRect(176, y + 4, 52 + (i * 13) % 28, 6); g.fillStyle = 'rgba(120,220,170,.42)'; g.fillRect(176, y + 14, 66, 4); g.fillStyle = 'rgba(232,246,236,.8)'; g.fillRect(288, y + 4, 32, 6); g.fillStyle = h1(i * 2.7) > .25 ? GREEN : RED; g.fillRect(288, y + 14, 22, 4);
-        g.fillStyle = 'rgba(120,220,170,.16)'; rr(g, 344, y + 8, 84, 5, 2.5); g.fill(); g.fillStyle = G; rr(g, 344, y + 8, 84 * (.08 + .85 * h1(i * 3.3)) * k, 5, 2.5); g.fill(); g.fillStyle = 'rgba(120,220,170,.5)'; g.fillRect(446, y + 8, 12, 5); }
-      pane(g, 474, 60, 158, 309, st(4)); g.fillStyle = 'rgba(232,246,236,.7)'; g.fillRect(484, 68, 50, 4.5); g.fillStyle = 'rgba(232,246,236,.92)'; g.fillRect(486, 96, 88, 8); g.fillStyle = 'rgba(120,220,170,.42)'; g.fillRect(486, 111, 132, 4); g.fillRect(486, 119, 112, 4);
-      g.fillStyle = G; rr(g, 486, 132, 134, 21, 6); g.fill(); for (let i = 0; i < 3; i++) { g.fillStyle = 'rgba(52,211,153,.22)'; g.beginPath(); g.arc(493, 180 + i * 24, 6, 0, TAU); g.fill(); g.fillStyle = 'rgba(232,246,236,.78)'; g.fillRect(505, 176 + i * 24, 40, 4); g.fillStyle = 'rgba(120,220,170,.4)'; g.fillRect(549, 176 + i * 24, 64, 4); g.fillRect(505, 184 + i * 24, 96, 4); }
-      pane(g, 8, 374, 624, 20, st(5)); for (let i = 0; i < 6; i++) { g.fillStyle = i ? 'rgba(120,220,170,.32)' : LIME; rr(g, 16 + i * 58, 379, 10, 10, 2.5); g.fill(); g.fillStyle = 'rgba(232,246,236,.62)'; g.fillRect(30 + i * 58, 382, 28, 4); } g.fillStyle = GREEN; g.beginPath(); g.arc(520, 384, 2.6, 0, TAU); g.fill(); g.fillStyle = 'rgba(120,220,170,.4)'; g.fillRect(528, 382, 94, 4); g.globalAlpha = 1; }
-    // the 64 seats flip in, the top three light up, then ten of them become the board on the left
-    const gr0 = a - L.grid, toRail = eio((a - L.build - .05) / .55);
-    if (gr0 > 0) { for (let i = 0; i < 64; i++) { const r = i >> 3, c = i & 7, k = eo((gr0 - (r + c) * .028) / .3); if (k <= 0) continue; const gx = 158 + c * 41, gy = 66 + r * 34, tw = 38, th = 31; let x = gx, y = gy, w = tw, h = th, al = 1;
-        if (toRail > 0) { if (i < 10) { x = lerp(gx, 13, toRail); y = lerp(gy, 79 + i * 28.4, toRail); w = lerp(tw, 114, toRail); h = lerp(th, 25, toRail); } else al = 1 - cl(toRail * 1.7); } if (al <= 0) continue; g.globalAlpha = al;
-        const v = 1 - i / 63 + .14 * (h1(i * 7.1) - .5), up = i < 44, rl = i < 10 ? toRail : 0; g.save(); g.translate(x + w / 2, y + h / 2); g.scale(1, k);
-        g.fillStyle = up ? `rgba(74,222,128,${lerp(.1 + .32 * v, .05, rl)})` : `rgba(251,113,133,${.1 + .3 * (1 - v)})`; rr(g, -w / 2, -h / 2, w, h, 5); g.fill();
-        const top = i < 3 ? ss(L.grid + .95, L.grid + 1.15, a) * (.65 + .35 * Math.sin(a * 9 + i)) * (1 - rl) : 0; g.strokeStyle = top > 0 ? `rgba(217,249,157,${top})` : 'rgba(120,220,170,.16)'; g.lineWidth = top > 0 ? 2 : 1; g.stroke();
-        g.fillStyle = `hsl(${(i * 47 + 150) % 360},62%,56%)`; g.beginPath(); g.arc(lerp(0, -w / 2 + 14, rl), lerp(-5, 0, rl), 6.5, 0, TAU); g.fill();
-        g.fillStyle = 'rgba(232,246,236,.82)'; g.fillRect(lerp(-8, -w / 2 + 26, rl), lerp(5, -5, rl), lerp(16, 24, rl), 3.5); g.fillStyle = 'rgba(120,220,170,.45)'; if (rl > .5) g.fillRect(-w / 2 + 26, 1, 16, 3);
-        g.fillStyle = up ? GREEN : RED; g.fillRect(lerp(-6, w / 2 - 20, rl), lerp(10.5, -2, rl), lerp(12, 13, rl), 3);
-        if (rl > .3) { g.globalAlpha = al * ss(.3, 1, rl); g.strokeStyle = GREEN; g.lineWidth = 1.3; g.beginPath(); for (let q = 0; q <= 8; q++) g[q ? 'lineTo' : 'moveTo'](8 + q * 3.2, 4 - q * .9 - 5 * fb(q * .6 + i * 4)); g.stroke(); }
-        g.restore(); } g.globalAlpha = 1; }
-    // the mark draws itself, then flies to the corner it lives in
-    const mk = ss(L.mark, L.mark + .85, a); if (mk > 0) { const fly = eio((a - L.unlock - .05) / .7); drawMark(g, lerp(320, 27, fly), lerp(98, 21, fly), lerp(1.2, .17, fly), mk); }
-    const ur = cl((a - L.unlock) / .65); if (ur > 0 && ur < 1) { g.globalAlpha = 1; g.strokeStyle = `rgba(217,249,157,${(1 - ur) * .9})`; g.lineWidth = 3 * (1 - ur) + .6; g.beginPath(); g.arc(fx, fy, 50 + ur * 330, 0, TAU); g.stroke(); g.fillStyle = `rgba(217,249,157,${(1 - ur) * .1})`; g.fillRect(0, 0, 640, 400); }
-    const vg = g.createRadialGradient(320, 200, 170, 320, 200, 420); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.35)'); g.fillStyle = vg; g.fillRect(0, 0, 640, 400);
-    g.fillStyle = 'rgba(0,0,0,.12)'; for (let y = 0; y < 400; y += 3) g.fillRect(0, y, 640, .8); g.restore(); lapTex.needsUpdate = true; return on * (.6 + .4 * ss(L.mark, L.mark + .5, a)); };
+    const on = eo(a / .28); g.save(); g.beginPath(); g.rect(0, 200 - 200 * on, 640, 400 * on); g.clip(); g.fillStyle = '#000'; g.fillRect(0, 0, 640, 400);
+    const full = ss(L.max, L.max + .42, a), desk = ss(L.desk - .04, L.desk + .06, a);
+    // 1 · the boot: the mark, rows of checks, a block bar
+    if (desk < 1) { g.globalAlpha = 1 - desk; mini(g, 18, 16, 30); g.fillStyle = 'rgba(200,225,210,.75)'; g.fillRect(58, 20, 120, 5); g.fillStyle = 'rgba(120,180,150,.55)'; g.fillRect(58, 30, 84, 4);
+      for (let i = 0; i < 10; i++) { const at = L.boot + .08 + i * .065; if (a < at) break; const y = 64 + i * 15, r1 = 40 + h1(i * 3.1) * 140, r2 = 20 + h1(i * 5.7) * 80; g.fillStyle = 'rgba(190,215,200,.7)'; g.fillRect(18, y, r1, 5); g.fillStyle = 'rgba(190,215,200,.45)'; g.fillRect(26 + r1, y, r2, 5); if (i === 1) { const n = Math.min(9, Math.floor((a - at) / .03)); for (let q = 0; q < n; q++) { g.fillStyle = 'rgba(217,249,157,.85)'; g.fillRect(250 + q * 9, y, 6, 5); } } else if (a > at + .05) { g.fillStyle = GREEN; g.fillRect(36 + r1 + r2, y, 12, 5); } }
+      const pb = cl((a - L.boot) / (L.desk - L.boot - .08)); g.strokeStyle = 'rgba(190,215,200,.6)'; g.lineWidth = 1.5; g.strokeRect(18, 340, 300, 14); for (let q = 0; q < Math.floor(pb * 30); q++) { g.fillStyle = q > 26 ? LIME : MINT; g.fillRect(21 + q * 9.8, 343, 7.6, 8); }
+      if (Math.sin(a * 20) > 0) { g.fillStyle = 'rgba(217,249,157,.9)'; g.fillRect(18, 368, 9, 3); } g.globalAlpha = 1; }
+    // 2 · the desktop: wallpaper, icons, taskbar
+    if (desk > 0 && full < 1) { g.globalAlpha = desk; const wp = g.createLinearGradient(0, 0, 0, 400); wp.addColorStop(0, '#0d4a34'); wp.addColorStop(1, '#073323'); g.fillStyle = wp; g.fillRect(0, 0, 640, 400); g.fillStyle = 'rgba(255,255,255,.035)'; for (let y = 0; y < 380; y += 4) for (let x = (y / 4) % 2 * 2; x < 640; x += 4) g.fillRect(x, y, 1.2, 1.2);
+      g.globalAlpha = desk * .1; drawMark(g, 330, 190, 1.6, 1); g.globalAlpha = desk;
+      const sel = a > L.click && a < L.open + .6;
+      ICONS.forEach((draw, i) => { const k = eo((a - L.desk - .06 - i * .05) / .2); if (k <= 0) return; const [x, y] = ICON_AT(i); g.save(); g.globalAlpha = desk * k; if (i === 0 && sel) { g.fillStyle = 'rgba(52,211,153,.35)'; g.fillRect(x - 2, y - 2, 36, 36); } g.translate(x, y); draw(g); g.restore(); g.globalAlpha = desk * k; g.fillStyle = i === 0 && sel ? '#0e5a3d' : 'rgba(0,0,0,.35)'; g.fillRect(x - 4, y + 35, 40, 8); g.fillStyle = 'rgba(241,250,244,.9)'; g.fillRect(x + 1, y + 37, 22 + (i * 7) % 10, 4); });
+      const tb = eo((a - L.desk - .05) / .25), ty = 380 + (1 - tb) * 22; g.globalAlpha = desk; g.fillStyle = FACE; g.fillRect(0, ty, 640, 20); g.fillStyle = HI; g.fillRect(0, ty, 640, 1.4);
+      g.fillStyle = FACE; g.fillRect(3, ty + 3, 50, 14); bevel(g, 3, ty + 3, 50, 14, true); mini(g, 7, ty + 5, 11); g.fillStyle = DK; g.fillRect(22, ty + 8.5, 26, 3.5);
+      const tasks = []; if (a > L.scan - .2 && a < L.unlock + .25) tasks.push(0); if (a > L.open) tasks.push(1); tasks.forEach((k, i) => { const x = 60 + i * 96, act = k === 1 || a < L.unlock; g.fillStyle = act ? '#a5c3b0' : FACE; g.fillRect(x, ty + 3, 90, 14); bevel(g, x, ty + 3, 90, 14, !act); mini(g, x + 4, ty + 5.5, 10); g.fillStyle = DK; g.fillRect(x + 18, ty + 8.5, 50, 3.5); });
+      g.fillStyle = FACE; g.fillRect(560, ty + 3, 77, 14); bevel(g, 560, ty + 3, 77, 14, false); g.fillStyle = GREEN; g.fillRect(566, ty + 7, 6, 6); g.fillStyle = DK; g.fillRect(600, ty + 8, 4, 4.5); g.fillRect(606, ty + 8, 4, 4.5); g.fillRect(614, ty + 8, 4, 4.5); g.fillRect(620, ty + 8, 4, 4.5); g.globalAlpha = 1; }
+    // 3 · the sign-in window: his fingerprint, then six digits
+    const lo = eo((a - L.scan + .3) / .22), lc = 1 - eio((a - L.unlock - .05) / .25);
+    if (lo > 0 && lc > 0) { const s = lerp(.86, 1, lo) * lerp(.6, 1, lc), cx = 320, cy = 186, w = 300, h = 212; g.save(); g.globalAlpha = lo * lc; g.translate(cx, cy); g.scale(s, s); g.translate(-w / 2, -h / 2); winFrame(g, 0, 0, w, h, true);
+      g.fillStyle = '#06170f'; g.fillRect(12, 26, 128, 128); bevel(g, 12, 26, 128, 128, false);
+      const fx = 76, fy = 90, sp = cl((a - L.scan - .05) / 1.0), sy = fy - 50 + 100 * (sp < .5 ? sp * 2 : 2 - sp * 2), print = () => PRINT.forEach(([r, segs]) => segs.forEach(([s0, s1]) => { g.beginPath(); g.ellipse(fx, fy + 5, r * .78, r * .98, 0, s0, s1); g.stroke(); }));
+      g.lineWidth = 2.4; g.strokeStyle = 'rgba(120,220,170,.24)'; print(); if (sp > 0) { g.save(); g.beginPath(); g.rect(14, 28, 124, sp < .5 ? sy - 28 : 124); g.clip(); g.strokeStyle = LIME; g.shadowColor = 'rgba(217,249,157,.8)'; g.shadowBlur = 6 + 5 * ss(.5, 1, sp); print(); g.restore(); }
+      if (sp > 0 && sp < 1) { g.fillStyle = 'rgba(217,249,157,.9)'; g.fillRect(14, sy - 1, 124, 2); g.fillStyle = 'rgba(217,249,157,.08)'; g.fillRect(14, sp < .5 ? sy - 26 : sy, 124, 26); }
+      const ok = ss(L.scan + 1.0, L.scan + 1.1, a); g.fillStyle = 'rgba(19,35,27,.85)'; g.fillRect(152, 32, 120, 6); g.fillRect(152, 46, 92, 4); g.fillStyle = 'rgba(76,114,96,.8)'; g.fillRect(152, 56, 104, 4); g.fillRect(152, 64, 70, 4);
+      g.fillStyle = '#06170f'; g.fillRect(152, 78, 136, 12); bevel(g, 152, 78, 136, 12, false); g.fillStyle = ok > 0 ? GREEN : MINT; g.fillRect(155, 81, 130 * (ok > 0 ? 1 : sp), 6);
+      const typed = a < L.code ? 0 : Math.min(6, Math.floor((a - L.code) / .1) + 1), fl = ss(L.unlock - .06, L.unlock + .04, a);
+      for (let i = 0; i < 6; i++) { const x = 152 + i * 23, y = 104; g.fillStyle = fl > 0 ? `rgb(${lerp(255, 217, fl)},${lerp(255, 249, fl)},${lerp(255, 157, fl)})` : '#f4fbf6'; g.fillRect(x, y, 19, 22); bevel(g, x, y, 19, 22, false); if (i < typed) { const k = eo((a - L.code - i * .1) / .12); g.fillStyle = DK; g.beginPath(); g.arc(x + 9.5, y + 11, 3.6 * k, 0, TAU); g.fill(); } else if (i === typed && Math.sin(a * 17) > 0 && a > L.code - .3) { g.fillStyle = DK; g.fillRect(x + 9, y + 5, 1.5, 12); } }
+      const press = a > L.unlock - .08 && a < L.unlock + .06; for (let b = 0; b < 2; b++) { const x = 152 + b * 72; g.fillStyle = FACE; g.fillRect(x, 168, 64, 22); bevel(g, x, 168, 64, 22, !(press && b === 0)); if (b === 0) { g.strokeStyle = DK; g.lineWidth = 1; g.strokeRect(x - 1.5, 166.5, 67, 25); } g.fillStyle = DK; g.fillRect(x + 20, 177, 24, 4); }
+      g.restore(); g.globalAlpha = 1; }
+    // 4 · the cursor opens st0kz: an outline grows from the icon into the window
+    const zr = cl((a - L.open) / .2); if (zr > 0 && zr < 1) { const [ix, iy] = ICON_AT(0); for (let q = 0; q < 3; q++) { const k = eo(cl(zr - q * .12) / (1 - .24)); g.strokeStyle = `rgba(241,250,244,${.8 - q * .22})`; g.lineWidth = 1.2; g.setLineDash([3, 2]); g.strokeRect(lerp(ix, WIN0[0], k), lerp(iy, WIN0[1], k), lerp(32, WIN0[2], k), lerp(32, WIN0[3], k)); } g.setLineDash([]); }
+    const wo = ss(L.open + .16, L.open + .26, a); if (wo > 0) { const [wx, wy, ww, wh] = winRect(a); g.globalAlpha = wo; winFrame(g, wx, wy, ww, wh, true, '#03100a'); const cx = wx + 3, cy = wy + 19, cw = ww - 6, ch = wh - 22; g.save(); g.beginPath(); g.rect(cx, cy, cw, ch); g.clip(); g.fillStyle = '#04110b'; g.fillRect(cx, cy, cw, ch); g.translate(cx, cy); g.scale(cw / 640, ch / 400);
+      const bg = g.createRadialGradient(320, 200, 20, 320, 200, 420); bg.addColorStop(0, '#0b2a1e'); bg.addColorStop(1, '#03100a'); g.fillStyle = bg; g.fillRect(0, 0, 640, 400); const G = g.createLinearGradient(0, 0, 640, 0); G.addColorStop(0, MINT); G.addColorStop(1, LIME); const ui = ss(L.build - .05, L.build + .3, a);
+      // the terminal builds itself around them: top bar, tape, board, feed, side pane, keys
+      if (ui > 0) { const st = i => eo((a - L.build - i * .08) / .42);
+        pane(g, 8, 7, 624, 26, st(0)); g.fillStyle = 'rgba(120,220,170,.12)'; rr(g, 84, 12, 372, 16, 5); g.fill(); g.fillStyle = 'rgba(232,246,236,.85)'; g.fillRect(46, 17, 28, 6); g.fillStyle = 'rgba(120,220,170,.5)'; g.fillRect(468, 17, 34, 5); g.fillRect(508, 17, 32, 5);
+        g.strokeStyle = 'rgba(217,249,157,.6)'; rr(g, 552, 11, 74, 18, 6); g.stroke(); g.fillStyle = GREEN; g.beginPath(); g.arc(561, 20, 3, 0, TAU); g.fill(); g.fillStyle = 'rgba(232,246,236,.8)'; g.fillRect(568, 18, 50, 4);
+        g.globalAlpha = st(1); g.save(); g.beginPath(); g.rect(8, 38, 624, 16); g.clip(); const sh = a * 26, q0 = Math.floor(sh / 96), off = sh - q0 * 96; for (let i = -1; i < 8; i++) { const q = q0 + i, x = 12 + i * 96 - off, up = h1(q * 3.3) > .35; g.fillStyle = `hsl(${(q * 53 % 360 + 360) % 360},60%,55%)`; g.beginPath(); g.arc(x + 6, 46, 5, 0, TAU); g.fill(); g.fillStyle = 'rgba(232,246,236,.8)'; g.fillRect(x + 15, 44, 24, 4); g.fillStyle = up ? GREEN : RED; g.fillRect(x + 44, 44, 20, 4); g.fillStyle = 'rgba(120,220,170,.18)'; g.fillRect(x + 88, 40, 1, 12); } g.restore();
+        pane(g, 8, 60, 124, 309, st(2) * .9); g.globalAlpha = st(2); g.fillStyle = 'rgba(232,246,236,.75)'; g.fillRect(16, 68, 42, 4.5);
+        pane(g, 138, 60, 330, 309, st(3)); g.fillStyle = 'rgba(232,246,236,.92)'; g.fillRect(150, 71, 74, 9); for (let i = 0; i < 4; i++) { g.fillStyle = i ? 'rgba(120,220,170,.14)' : LIME; rr(g, 336 + i * 32, 69, 28, 13, 4); g.fill(); }
+        for (let i = 0; i < 9; i++) { const k = st(5 + i * .55), y = 96 + i * 29.5 + (1 - k) * 8, nw = a > L.build + 1.15 ? ss(L.build + 1.15, L.build + 1.35, a) : 0; g.globalAlpha = k; if (i === 0 && nw > 0) { g.fillStyle = `rgba(217,249,157,${.16 * (1 - ss(L.build + 1.4, L.build + 2.4, a))})`; g.fillRect(140, y - 3, 326, 28); }
+          g.fillStyle = `hsl(${(i * 67 + 140) % 360},60%,56%)`; g.beginPath(); g.arc(158, y + 10, 9, 0, TAU); g.fill(); g.fillStyle = `hsl(${(i * 47 + 150) % 360},62%,56%)`; g.beginPath(); g.arc(165, y + 17, 4, 0, TAU); g.fill();
+          g.fillStyle = 'rgba(232,246,236,.86)'; g.fillRect(176, y + 4, 52 + (i * 13) % 28, 6); g.fillStyle = 'rgba(120,220,170,.42)'; g.fillRect(176, y + 14, 66, 4); g.fillStyle = 'rgba(232,246,236,.8)'; g.fillRect(288, y + 4, 32, 6); g.fillStyle = h1(i * 2.7) > .25 ? GREEN : RED; g.fillRect(288, y + 14, 22, 4);
+          g.fillStyle = 'rgba(120,220,170,.16)'; rr(g, 344, y + 8, 84, 5, 2.5); g.fill(); g.fillStyle = G; rr(g, 344, y + 8, 84 * (.08 + .85 * h1(i * 3.3)) * k, 5, 2.5); g.fill(); g.fillStyle = 'rgba(120,220,170,.5)'; g.fillRect(446, y + 8, 12, 5); }
+        pane(g, 474, 60, 158, 309, st(4)); g.fillStyle = 'rgba(232,246,236,.7)'; g.fillRect(484, 68, 50, 4.5); g.fillStyle = 'rgba(232,246,236,.92)'; g.fillRect(486, 96, 88, 8); g.fillStyle = 'rgba(120,220,170,.42)'; g.fillRect(486, 111, 132, 4); g.fillRect(486, 119, 112, 4);
+        g.fillStyle = G; rr(g, 486, 132, 134, 21, 6); g.fill(); for (let i = 0; i < 3; i++) { g.fillStyle = 'rgba(52,211,153,.22)'; g.beginPath(); g.arc(493, 180 + i * 24, 6, 0, TAU); g.fill(); g.fillStyle = 'rgba(232,246,236,.78)'; g.fillRect(505, 176 + i * 24, 40, 4); g.fillStyle = 'rgba(120,220,170,.4)'; g.fillRect(549, 176 + i * 24, 64, 4); g.fillRect(505, 184 + i * 24, 96, 4); }
+        pane(g, 8, 374, 624, 20, st(5)); for (let i = 0; i < 6; i++) { g.fillStyle = i ? 'rgba(120,220,170,.32)' : LIME; rr(g, 16 + i * 58, 379, 10, 10, 2.5); g.fill(); g.fillStyle = 'rgba(232,246,236,.62)'; g.fillRect(30 + i * 58, 382, 28, 4); } g.fillStyle = GREEN; g.beginPath(); g.arc(520, 384, 2.6, 0, TAU); g.fill(); g.fillStyle = 'rgba(120,220,170,.4)'; g.fillRect(528, 382, 94, 4); g.globalAlpha = 1; }
+      // the 64 seats flip in, the top three light up, then ten of them become the board on the left
+      const gr0 = a - L.grid, toRail = eio((a - L.build - .05) / .55);
+      if (gr0 > 0) { for (let i = 0; i < 64; i++) { const r = i >> 3, c = i & 7, k = eo((gr0 - (r + c) * .028) / .3); if (k <= 0) continue; const gx = 158 + c * 41, gy = 66 + r * 34, tw = 38, th = 31; let x = gx, y = gy, w = tw, h = th, al = 1;
+          if (toRail > 0) { if (i < 10) { x = lerp(gx, 13, toRail); y = lerp(gy, 79 + i * 28.4, toRail); w = lerp(tw, 114, toRail); h = lerp(th, 25, toRail); } else al = 1 - cl(toRail * 1.7); } if (al <= 0) continue; g.globalAlpha = al;
+          const v = 1 - i / 63 + .14 * (h1(i * 7.1) - .5), up = i < 44, rl = i < 10 ? toRail : 0; g.save(); g.translate(x + w / 2, y + h / 2); g.scale(1, k);
+          g.fillStyle = up ? `rgba(74,222,128,${lerp(.1 + .32 * v, .05, rl)})` : `rgba(251,113,133,${.1 + .3 * (1 - v)})`; rr(g, -w / 2, -h / 2, w, h, 5); g.fill();
+          const top = i < 3 ? ss(L.grid + .95, L.grid + 1.15, a) * (.65 + .35 * Math.sin(a * 9 + i)) * (1 - rl) : 0; g.strokeStyle = top > 0 ? `rgba(217,249,157,${top})` : 'rgba(120,220,170,.16)'; g.lineWidth = top > 0 ? 2 : 1; g.stroke();
+          g.fillStyle = `hsl(${(i * 47 + 150) % 360},62%,56%)`; g.beginPath(); g.arc(lerp(0, -w / 2 + 14, rl), lerp(-5, 0, rl), 6.5, 0, TAU); g.fill();
+          g.fillStyle = 'rgba(232,246,236,.82)'; g.fillRect(lerp(-8, -w / 2 + 26, rl), lerp(5, -5, rl), lerp(16, 24, rl), 3.5); g.fillStyle = 'rgba(120,220,170,.45)'; if (rl > .5) g.fillRect(-w / 2 + 26, 1, 16, 3);
+          g.fillStyle = up ? GREEN : RED; g.fillRect(lerp(-6, w / 2 - 20, rl), lerp(10.5, -2, rl), lerp(12, 13, rl), 3);
+          if (rl > .3) { g.globalAlpha = al * ss(.3, 1, rl); g.strokeStyle = GREEN; g.lineWidth = 1.3; g.beginPath(); for (let q = 0; q <= 8; q++) g[q ? 'lineTo' : 'moveTo'](8 + q * 3.2, 4 - q * .9 - 5 * fb(q * .6 + i * 4)); g.stroke(); }
+          g.restore(); } g.globalAlpha = 1; }
+      if (ui > 0) { g.globalAlpha = ui; drawMark(g, 27, 21, .17, 1); }
+      g.restore(); g.globalAlpha = 1; }
+    if (a > L.cursor - .05 && full < .5) { const [x, y] = curAt(a); g.globalAlpha = ss(L.cursor - .05, L.cursor + .1, a) * (1 - ss(L.max - .1, L.max + .1, a)); cursor(g, x, y, clickAt(a)); g.globalAlpha = 1; }
+    // a CRT's glass: scan lines, a soft vignette, a faint flicker
+    const vg = g.createRadialGradient(320, 200, 170, 320, 200, 430); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.42)'); g.fillStyle = vg; g.fillRect(0, 0, 640, 400);
+    g.fillStyle = `rgba(0,0,0,${.13 + .03 * Math.sin(t * 50)})`; for (let y = 0; y < 400; y += 3) g.fillRect(0, y, 640, .9); const roll = (t * 90) % 520 - 60; const rg = g.createLinearGradient(0, roll, 0, roll + 60); rg.addColorStop(0, 'rgba(217,249,157,0)'); rg.addColorStop(.5, 'rgba(217,249,157,.035)'); rg.addColorStop(1, 'rgba(217,249,157,0)'); g.fillStyle = rg; g.fillRect(0, roll, 640, 60);
+    g.restore(); lapTex.needsUpdate = true; return on * (.7 + .3 * desk); };
 
   // instanced screens: every monitor samples one cell of the atlas
   const screenMat = new T.ShaderMaterial({ uniforms: { atlas: { value: atlasTex }, time: { value: 0 }, fogC: { value: FOGC }, fogD: { value: FOGD } },
@@ -257,10 +294,12 @@ export function create(canvas, opt = {}) {
     for (const x of [-2.2, -.9, .9, 2.3]) out.push({ mode: 'stand', x, z: -46.6 + r() * .3, h: 0, s: r(), y: 4.7, bell: x === .9 });
     while (out.length < NX) { const a = r() * TAU, [px, pz] = POSTS[Math.floor(r() * POSTS.length)], x = px + Math.sin(a) * 3.3, z = pz + Math.cos(a) * 3.3; if (Math.abs(x) < 3.7 || Math.abs(x) > 17.5) continue; out.push({ mode: 'stand', x, z, h: a + PI, s: r() }); }
     return out.slice(0, NX); })();
+  EX[NX - 1] = { mode: 'cross', z: 1.2, x0: -5, x1: 5, t0: 1.15, t1: 8.05, v: 1.45, s: .37 }; EX[NX - 2] = { mode: 'cross', z: -2.6, x0: 5, x1: -5, t0: 2.75, t1: 9.65, v: 1.45, s: .81 };
   EX.forEach((e, i) => { const j = JACK[Math.floor(e.s * 97) % JACK.length]; P.torso.setColorAt(i, tmpC.set(j)); P.aL.setColorAt(i, tmpC.set(j)); P.aR.setColorAt(i, tmpC.set(j)); const tr = [0x10161a, 0x1b1f24, 0x2a2622][Math.floor(e.s * 31) % 3]; P.lL.setColorAt(i, tmpC.set(tr)); P.lR.setColorAt(i, tmpC.set(tr)); P.head.setColorAt(i, tmpC.set(SKIN[Math.floor(e.s * 53) % SKIN.length])); P.hair.setColorAt(i, tmpC.set(HAIR[Math.floor(e.s * 71) % HAIR.length])); });
   Object.values(P).forEach(m => { m.instanceColor.needsUpdate = true; });
   const poseExtras = t => { EX.forEach((e, i) => { const g = rig, s = e.s; let x = e.x, z = e.z, h = e.h, w = 0, ph = 0, y = e.y || 0;
-      if (e.mode === 'walk') { const dx = e.b[0] - e.a[0], dz = e.b[1] - e.a[1], L = Math.hypot(dx, dz), d = (t * e.v + s * L * 2) % (L * 2), k = d < L ? d / L : 2 - d / L; x = e.a[0] + dx * k; z = e.a[1] + dz * k; h = Math.atan2(dx, dz) + (d < L ? 0 : PI); w = 1; ph = (t * e.v + s * 9) / 1.45 * TAU; }
+      if (e.mode === 'cross') { const k = cl((t - e.t0) / (e.t1 - e.t0)); x = lerp(e.x0, e.x1, k); z = e.z; h = e.x1 > e.x0 ? PI / 2 : -PI / 2; w = k > 0 && k < 1 ? 1 : 0; ph = (t * e.v) / 1.45 * TAU; }
+      else if (e.mode === 'walk') { const dx = e.b[0] - e.a[0], dz = e.b[1] - e.a[1], L = Math.hypot(dx, dz), d = (t * e.v + s * L * 2) % (L * 2), k = d < L ? d / L : 2 - d / L; x = e.a[0] + dx * k; z = e.a[1] + dz * k; h = Math.atan2(dx, dz) + (d < L ? 0 : PI); w = 1; ph = (t * e.v + s * 9) / 1.45 * TAU; }
       g.root.position.set(x, y, z); g.root.rotation.y = h + (w ? 0 : .25 * Math.sin(t * .4 + s * 30)); g.root.scale.setScalar(.94 + s * .14); g.hip.position.y = .9 + (w ? .02 * Math.cos(ph * 2) : .008 * Math.sin(t * 1.3 + s * 20)); g.torso.rotation.set(w ? .06 : .03 * Math.sin(t * .7 + s * 11), w ? .08 * Math.sin(ph) : 0, 0); g.head.rotation.set(-.12 * (w ? 0 : 1) + .05 * Math.sin(t * .9 + s * 5), .5 * Math.sin(t * .5 + s * 40) * (w ? .3 : 1), 0);
       g.lL.rotation.x = -.5 * Math.sin(ph) * w; g.lR.rotation.x = .5 * Math.sin(ph) * w; const gest = w ? 0 : ss(.55, .8, vn(t * .45 + s * 60)), ring = e.bell ? ss(2.2, 2.7, t) * (1 - ss(6.2, 7, t)) : 0;
       g.aL.rotation.set(w ? .45 * Math.sin(ph) : -.5 - .3 * Math.sin(t * 1.1 + s * 9), 0, w ? 0 : .12); g.aR.rotation.set(w ? -.45 * Math.sin(ph) : lerp(-.15, -2.3 - .3 * Math.sin(t * 5 + s * 7), Math.max(gest * (s > .45 ? 1 : 0), ring)), 0, -.1);
@@ -279,7 +318,7 @@ export function create(canvas, opt = {}) {
     const leg = s => { const h = new T.Group(); h.position.set(s * .1, 0, 0); hip.add(h); mesh(cap(.08, .27), pants, 0, -.215, 0, h); const k = new T.Group(); k.position.y = -.43; h.add(k); mesh(cap(.066, .28), pants, 0, -.21, 0, k); box(.105, .075, .27, shoe, 0, -.455, .06, k); return [h, k]; };
     const [sL, eL] = arm(1), [sR, eR] = arm(-1), [hL, kL] = leg(1), [hR, kR] = leg(-1); g.rotation.y = PI; scene.add(g); return { g, hip, torso, head, sL, eL, sR, eR, hL, kL, hR, kR }; })();
   const heroLight = new T.PointLight(0xeafff2, 9, 9, 2); scene.add(heroLight);
-  const heroAt = t => { const d = walked(t); return [lerp(0, -.5, ss(7.6, 9.4, t)), Z0 - d]; };
+  const heroAt = t => { const d = walked(t); return [lerp(0, .1, ss(7.4, 9.0, t)), Z0 - d]; }; HERO.g.visible = false; dummy.position.set(0, -50, 0); dummy.rotation.set(0, 0, 0); dummy.scale.setScalar(1); dummy.updateMatrix(); blobs.setMatrixAt(NX, dummy.matrix); blobs.instanceMatrix.needsUpdate = true;
   const poseHero = t => { const H = HERO, d = walked(t), w = pace(t), ph = d / 1.72 * TAU, [x, z] = heroAt(t), s = Math.sin(ph), c = Math.cos(ph), reach = ss(8.95, 9.4, t) * (1 - .9 * ss(WAKE + 3.05, WAKE + 3.7, t)), typing = ss(WAKE + 2.0, WAKE + 2.28, t) * (1 - ss(WAKE + 2.9, WAKE + 3.25, t)), tap = .07 * Math.sin(t * 41) * typing, idle = Math.sin(t * 1.6) * (1 - w);
     H.g.position.set(x, 0, z); H.g.rotation.y = PI - .12 * ss(8.4, 9.5, t); H.hip.position.y = .915 + .022 * Math.cos(ph * 2) * w + .004 * idle; H.hip.rotation.y = -.07 * s * w; H.torso.rotation.set(.075 * w + .1 * reach, .11 * s * w, .02 * s * w);
     H.head.rotation.set(-.2 * ss(2.6, 3.5, t) * (1 - ss(5.2, 6.4, t)) + .2 * ss(9, 9.6, t), .45 * Math.sin((t - 3.3) * 1.15) * ss(3.3, 4.1, t) * (1 - ss(7.4, 8.4, t)) - .1 * ss(8.6, 9.3, t), 0);
@@ -318,7 +357,28 @@ export function create(canvas, opt = {}) {
 
   // ------------------------------------------------------------ camera
   scene.updateMatrixWorld(true); const SC = new T.Vector3(); lid.rotation.x = LIDOPEN; scene.updateMatrixWorld(true); lapScr.getWorldPosition(SC); const SN = new T.Vector3(0, 0, 1).transformDirection(lapScr.matrixWorld), END = SC.clone();
-  const K = [[0, [.55, 1.42, 17.3], [0, 1.9, 10], 46], [1.5, [.8, 1.6, 15.5], [0, 2.1, 8], 46], [3.3, [.45, 2.35, 10.5], [-.5, 3.4, -8], 54], [5.1, [3.0, 6.9, 4.4], [-1.5, 1.4, -13], 58], [6.9, [-2.85, 1.65, 2.2], [.5, 1.45, -1.2], 48], [8.3, [1.75, 1.85, -1.3], [-.2, 1.3, -5.1], 46], [9.75, [.95, 1.74, -3.1], [.02, 1.3, -5.15], 42], [10.6, [.55, 1.66, -4.12], [SC.x, SC.y, SC.z], 38], [11.7, [.36, 1.64, -4.6], [SC.x, SC.y, SC.z], 36], [13.3, [.27, 1.64, -4.77], [SC.x, SC.y, SC.z], 35], [15.05, END, [SC.x, SC.y, SC.z], 36], [16.0, END, [SC.x, SC.y, SC.z], 36]];
+  const K = [[9.0, [.1, 1.62, -4.27], [BX, 1.1, BZ], 52], [10.3, [.12, 1.6, -4.42], [SC.x, SC.y, SC.z], 42], [11.9, [.12, 1.59, -4.62], [SC.x, SC.y, SC.z], 38], [13.6, [.12, 1.58, -4.72], [SC.x, SC.y, SC.z], 37], [15.35, END, [SC.x, SC.y, SC.z], 36], [16.3, END, [SC.x, SC.y, SC.z], 36]];
+  // first person: we are the one walking in. The eye bobs with each step, looks up at the ceiling, glances at the posts, finds the booth
+  const eye = new T.Vector3(), aim = new T.Vector3(), kpos = new T.Vector3(), ktar = new T.Vector3(), fwd = new T.Vector3(), rgt = new T.Vector3(), upv = new T.Vector3(), tv = new T.Vector3(), tw = new T.Vector3();
+  const yawAt = t => .52 * ss(3.7, 4.5, t) * (1 - ss(4.9, 5.6, t)) - .46 * ss(5.6, 6.3, t) * (1 - ss(6.6, 7.3, t)) + (vn(t * .55 + 2) - .5) * .05;
+  const pitchAt = t => .36 * ss(1.6, 2.5, t) * (1 - ss(2.9, 3.7, t)) + .05 * ss(3.7, 4.5, t) * (1 - ss(4.9, 5.6, t)) - .06 * ss(6.9, 7.7, t) - .4 * ss(8.0, 9.0, t) + (vn(t * .6 + 9) - .5) * .035;
+  const walkCam = t => { const d = walked(t), w = pace(t), ph = d / 1.72 * TAU, [x, z] = heroAt(t); eye.set(x + .017 * Math.sin(ph) * w, 1.64 + (.024 * Math.abs(Math.cos(ph)) - .012) * w, z); const yw = yawAt(t), pt = pitchAt(t); aim.set(eye.x + Math.sin(yw) * Math.cos(pt) * 8, eye.y + Math.sin(pt) * 8, eye.z - Math.cos(yw) * Math.cos(pt) * 8); };
+  // the hands: forearm, cuff and hand, placed in the world each frame between an elbow under the eye and whatever the hand is doing
+  const ARMS = [1, -1].map(side => { const g = new T.Group(); scene.add(g); g.visible = false; const sleeve = mesh(new T.CylinderGeometry(.04, .048, 1, 14), std(0x2fca8f, .75), 0, 0, 0, g), cuff = mesh(new T.CylinderGeometry(.045, .045, .028, 14), std(0xd9f99d, .7), 0, 0, 0, g), hand = new T.Group(); g.add(hand); const skin = std(0xe2b48c, .62);
+    mesh(new T.BoxGeometry(.078, .026, .085), skin, 0, 0, .04, hand); const fingers = [0, 1, 2, 3].map(i => { const f = mesh(new T.CapsuleGeometry(.0085, .04, 3, 6), skin, -.027 + i * .018, -.004, .1, hand); f.rotation.x = PI / 2 + .25; return f; }); const th = mesh(new T.CapsuleGeometry(.0095, .03, 3, 6), skin, side * .046, -.004, .035, hand); th.rotation.set(PI / 2, 0, side * .9);
+    return { side, g, sleeve, cuff, hand, fingers }; });
+  const placeArm = (A, shoulder, wrist, tap) => { tv.copy(wrist).sub(shoulder).normalize(); const len = .52; A.sleeve.position.copy(wrist).addScaledVector(tv, -len * .52); A.sleeve.scale.set(1, len, 1); A.sleeve.quaternion.setFromUnitVectors(Y_UP, tv); A.cuff.position.copy(wrist).addScaledVector(tv, -.012); A.cuff.quaternion.copy(A.sleeve.quaternion); A.hand.position.copy(wrist); tw.copy(wrist).add(tv); tw.y = wrist.y - .02; A.hand.lookAt(tw); A.fingers.forEach((f, i) => { f.rotation.x = PI / 2 + .25 + (tap && i === 1 ? .5 : 0); }); };
+  const Y_UP = new T.Vector3(0, 1, 0), lidEdge = new T.Vector3(), padP = new T.Vector3(), keyP = [new T.Vector3(), new T.Vector3()], restP = new T.Vector3(), elbP = new T.Vector3(), handP = new T.Vector3();
+  const camRel = (out, x, y, z) => out.copy(cam.position).addScaledVector(rgt, x).addScaledVector(upv, y).addScaledVector(fwd, z);
+  const poseArms = t => { const vis = t > 8.6 && t < WAKE + L.max + .3; ARMS.forEach(A => { A.g.visible = vis; }); if (!vis) return; fwd.set(0, 0, -1).applyQuaternion(cam.quaternion); rgt.set(1, 0, 0).applyQuaternion(cam.quaternion); upv.set(0, 1, 0).applyQuaternion(cam.quaternion);
+    lid.updateMatrixWorld(true); lidEdge.set(0, .43, .03); lid.localToWorld(lidEdge); padP.set(0, .066, .15); LAP.localToWorld(padP); keyP[0].set(.1, .07, -.05); LAP.localToWorld(keyP[0]); keyP[1].set(-.1, .07, -.05); LAP.localToWorld(keyP[1]);
+    const a = t - WAKE, [cx, cy] = curAt(a), cur = [(cx - 320) / 640 * .09, (cy - 200) / 400 * .06];
+    ARMS.forEach((A, k) => { const s = A.side; camRel(restP, s * .26, -.52, .3); camRel(elbP, s * .2, -.36, -.08);
+      let p; if (s > 0) { const reach = eio((t - 8.7) / .3), toPad = eio((t - 9.22) / .36), toKey = eio((t - WAKE - L.code + .32) / .25), back = eio((t - WAKE - L.unlock - .05) / .25), out = eio((t - WAKE - L.max) / .3);
+          handP.copy(restP).lerp(lidEdge, reach).lerp(padP, toPad); handP.lerp(keyP[0], toKey * (1 - back)); handP.x += cur[0] * ss(L.cursor - .1, L.cursor, a) * (1 - ss(L.max - .1, L.max, a)); handP.z += cur[1] * ss(L.cursor - .1, L.cursor, a) * (1 - ss(L.max - .1, L.max, a)); handP.lerp(restP, out); p = handP; }
+      else { const inn = eio((t - WAKE - L.code + .36) / .28), out = eio((t - WAKE - L.unlock - .05) / .3); handP.copy(restP).lerp(keyP[1], inn * (1 - out)); p = handP; if (inn <= 0 || out >= 1) { A.g.visible = false; return; } }
+      const typing = a > L.code - .05 && a < L.unlock, ti = Math.floor((a - L.code) / .1), tap = typing && ti >= 0 && ti < 6 && (ti % 2 === (s > 0 ? 0 : 1)) && (a - L.code - ti * .1) < .05, click = s > 0 && clickAt(a);
+      if (tap || click) p.y -= .012; placeArm(A, elbP, p, tap || click); }); };
   // the last stop sits on the screen's normal, just far enough that the screen fills the frame at this aspect
   const endAt = asp => { const v = 36 * (asp < 1 ? 1.32 : 1) * PI / 180, h = 2 * Math.tan(v / 2), d = Math.min(.48 / h, .765 / (h * asp)) * .99; return SC.clone().addScaledVector(SN, d); };
   let cp, ct; const n = K.length; const path = asp => { const E = endAt(asp); K[n - 2][1] = E; K[n - 1][1] = E; cp = new T.CatmullRomCurve3(K.map(k => k[1] instanceof T.Vector3 ? k[1].clone() : new T.Vector3(...k[1])), false, 'centripetal'); ct = new T.CatmullRomCurve3(K.map(k => new T.Vector3(...k[2])), false, 'centripetal'); }; path(16 / 10);
@@ -337,10 +397,11 @@ export function create(canvas, opt = {}) {
     hands.forEach(([hh, mh]) => { hh.rotation.z = -(9.5 / 12) * TAU - t * .0003; mh.rotation.z = -(.5 * TAU) - t * .08; }); banners.forEach((b, i) => { b.rotation.x = .035 * Math.sin(t * .8 + i * 1.7); }); shafts.forEach((m, i) => { m.material.opacity = .075 + .05 * vn(t * .35 + i * 3.3); });
     // the laptop: the lid lifts as he reaches it, then the screen comes on
     lid.rotation.x = lerp(LIDSHUT, LIDOPEN, eio((t - 9.02) / .46)); lapL.intensity = scrOn * 2.6; lapGlow.material.opacity = scrOn * .34; led2.material.color.set(scrOn > 0 ? 0xd9f99d : 0x1b4d38);
-    poseExtras(t); poseSlips(t); poseHero(t);
-    // camera
-    const u = uAt(t); cp.getPoint(u, cpos); ct.getPoint(u, ctar); const shake = (.25 + .75 * w) * (1 - ss(10.4, 11.2, t)); cpos.x += (vn(t * 1.3 + 3) - .5) * .05 * shake; cpos.y += (vn(t * 1.7 + 9) - .5) * .04 * shake + Math.abs(Math.sin(walked(t) / 1.72 * TAU)) * .012 * w * (1 - ss(4.2, 5, t) + ss(6.2, 7, t)); ctar.x += (vn(t * .9 + 20) - .5) * .06 * shake; ctar.y += (vn(t * 1.1 + 30) - .5) * .05 * shake;
-    cam.position.copy(cpos); cam.up.set(0, 1, 0); cam.lookAt(ctar); cam.fov = fovAt(t) * (cam.aspect < 1 ? 1.32 : 1); cam.updateProjectionMatrix(); cam.updateMatrixWorld();
+    poseExtras(t); poseSlips(t);
+    // camera: our eyes while we walk, then a lean over the laptop, then into its screen
+    walkCam(t); const bl = ss(8.85, 9.9, t), u = uAt(Math.max(t, K[0][0])); cp.getPoint(u, kpos); ct.getPoint(u, ktar); cam.position.copy(eye).lerp(kpos, bl); tv.copy(aim).lerp(ktar, bl);
+    cam.up.set(0, 1, 0); cam.lookAt(tv); cam.fov = lerp(64, fovAt(Math.max(t, K[0][0])), bl) * (cam.aspect < 1 ? lerp(1.18, 1.32, bl) : 1); cam.updateProjectionMatrix(); cam.updateMatrixWorld(); const cpos = cam.position;
+    heroLight.position.copy(cam.position).add(tv.set(0, .35, 0)); heroLight.intensity = 2.2; poseArms(t);
     floorMat.uniforms.camP.value.copy(cpos); mirror(); R.render(scene, cam); };
   const resize = sc => { if (sc) opt.scale = sc; const w = canvas.clientWidth || innerWidth, h = canvas.clientHeight || innerHeight, pr = Math.min(devicePixelRatio || 1, low ? 1.25 : 1.75) * (opt.scale || 1); W = w; Hh = h; R.setPixelRatio(pr); R.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); path(w / h); const k = low ? .4 : .55; rt.setSize(Math.max(2, Math.round(w * pr * k)), Math.max(2, Math.round(h * pr * k))); floorMat.uniforms.px.value.set(1 / (w * pr * k), 1 / (h * pr * k)); dust.uniforms.px.value = h * pr; };
   resize();
