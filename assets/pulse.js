@@ -20,6 +20,7 @@
       return { view: `<div class="vh"><h2>Pulse</h2><span class="mu2 mono" style="font-size:11.5px">live · from the board and the chain</span></div><div class="pb"><div class="sec" style="border-top:0"><div class="kv" style="grid-template-columns:repeat(4,minmax(0,1fr))">${kv.map(([k, v]) => `<div><span class="lab">${k}</span><b>${v}</b></div>`).join('')}</div></div>
         <div class="pg">
           ${card('Breadth', `${up} up · ${dn} down today`, `<div class="brd"><i style="width:${breadth.toFixed(1)}%"></i></div><div class="brl"><span class="up">${up} rising</span><span class="dn">${dn} falling</span></div>`, true)}
+          ${card('Live log', 'what changed while you watched', `<div id="logBox" class="lgb">${Z.logHtml()}</div>`, true)}
           ${card('Top movers', 'last 24 hours', `<div>${by24.slice(0, 6).map(mover).join('')}</div>`)}
           ${card('Biggest drops', 'last 24 hours', `<div>${by24.slice(-6).reverse().map(mover).join('')}</div>`)}
           ${card('30-day leaders', p30.length + ' of ' + st.length + ' with 30 days of prices', p30.slice(0, 10).map(s => row(s, s.perf30, Math.abs(s.perf30) / maxP * 100, s.perf30 < 0 ? 'var(--dn)' : '')).join('') || '<div class="empty" style="padding:16px">reading 30-day prices…</div>')}
